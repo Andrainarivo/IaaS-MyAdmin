@@ -1,0 +1,7 @@
+.terraform/
+*.tfstate.*
+*.tfstate
+*.hcl
+*.secret
+*.tfvars
+gar-key.json

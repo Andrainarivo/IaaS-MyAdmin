@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-production-secrets
+  namespace: default
+type: Opaque
+stringData:
+  mysql-root-password: "PasswordRootProd" # À modifier
+  mysql-password: "MyAdminUserProd"       # À modifier
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myadmin-db-service
+  namespace: default
+spec:
+  ports:
+  - port: 3306
+  selector:
+    app: myadmin-db
+  clusterIP: None # "Headless" service, idéal pour la stabilité réseau des StatefulSets
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: myadmin-db
+  namespace: default
+spec:
+  serviceName: "myadmin-db-service"
+  replicas: 1 # 1 réplica suffit généralement si on n'a pas besoin de haute disponibilité pour la base de données
+  selector:
+    matchLabels:
+      app: myadmin-db
+  template:
+    metadata:
+      labels:
+        app: myadmin-db
+    spec:
+      nodeSelector:
+        # Force l'exécution sur le worker.
+        kubernetes.io/hostname: "myadmin-k3s-worker"
+      containers:
+      - name: mysql
+        image: mysql:8.0.46 # Version stable de MySQL, à ajuster si besoin
+        env:
+        - name: MYSQL_DATABASE
+          value: "myadmin_db"
+        - name: MYSQL_USER
+          value: "myadmin_user"
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-production-secrets
+              key: mysql-root-password
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-production-secrets
+              key: mysql-password
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi # Taille du disque persistant alloué

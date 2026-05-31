@@ -1,0 +1,51 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: myadmin_mysql_dev
+    restart: always
+    environment:
+      MYSQL_DATABASE: myadmin_db
+      MYSQL_USER: myadmin_user
+      MYSQL_PASSWORD: myadmin_password
+      MYSQL_ROOT_PASSWORD: root_secure_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "myadmin_user", "-pmyadmin_password"]
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      network: host
+    container_name: myadmin_api_dev
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+      # On prend la clé de l'hôte et on la monte de manière invisible dans le conteneur
+      # le :ro signifie "Read-Only" pour éviter que le conteneur ne modifie ou supprime les vraies clés.
+      - ${SSH_PRIVATE_KEY_PATH}:/app/secrets/id_rsa:ro
+      - ${SSH_KNOWN_HOSTS_PATH}:/app/secrets/known_hosts:ro
+    environment:
+      - ENV=${ENV}
+      - SECRET_KEY=${SECRET_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - DATABASE_URL=mysql+pymysql://myadmin_user:myadmin_password@db:3306/myadmin_db
+      - SSH_PRIVATE_KEY_PASSPHRASE=${SSH_PRIVATE_KEY_PASSPHRASE}
+      # L'application Python lira TOUJOURS ces chemins fixes, peu importe l'utilisateur hôte !
+      - SSH_PRIVATE_KEY_PATH=/app/secrets/id_rsa
+      - SSH_KNOWN_HOSTS_PATH=/app/secrets/known_hosts
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql_dev_data:
