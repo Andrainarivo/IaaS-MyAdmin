@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: myadmin-db-service
-  namespace: dev
+  namespace: myadmin-dev
   labels:
     app.kubernetes.io/name: myadmin-db
     app.kubernetes.io/component: database
@@ -20,7 +20,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: myadmin-db
-  namespace: dev
+  namespace: myadmin-dev
   labels:
     app.kubernetes.io/name: myadmin-db
     app.kubernetes.io/component: database
