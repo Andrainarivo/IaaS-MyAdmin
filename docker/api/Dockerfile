@@ -6,11 +6,21 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt .
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG GIT_COMMIT_SHA=main
+
+RUN rm -rf * .git 2>/dev/null || true
+
+RUN git clone https://github.com/Andrainarivo/MyAdmin.git . \
+    && git checkout ${GIT_COMMIT_SHA} \
+    && rm -rf .git
+
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-COPY . .
 
 EXPOSE 8000
 

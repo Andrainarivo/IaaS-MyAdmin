@@ -1,0 +1,4 @@
+project_id = "<gcp_projet_id>"
+region     = "<gcp_projet_region>"
+zone       = "<gcp_projet_zone>"
+k3s_token  = "<token_secret>"

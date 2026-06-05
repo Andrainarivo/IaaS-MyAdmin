@@ -1,0 +1,35 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myadmin-hpa
+  namespace: myadmin-dev
+  labels:
+    app.kubernetes.io/name: myadmin-hpa
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: myadmin
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myadmin-api
+  minReplicas: 3             # Ne descend jamais sous 3 pods
+  maxReplicas: 10            # Monte jusqu'à 10 pods max pendant le crash test
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70 # Déclenche le scale-up à 70% d'utilisation CPU
+  behavior:
+    scaleUp:
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15 # Ne pas augmenter plus de 100% toutes les 15 secondes pour éviter les sur-réactions
+    scaleDown:
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15 # Ne pas réduire plus de 100% toutes les 15 secondes pour éviter les sur-réactions
+      stabilizationWindowSeconds: 300 # Attendre 5 minutes avant de réduire les pods pour éviter les oscillations

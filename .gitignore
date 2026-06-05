@@ -5,3 +5,5 @@
 *.secret
 *.tfvars
 gar-key.json
+.env
+logs/

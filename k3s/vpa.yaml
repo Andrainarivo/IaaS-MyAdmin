@@ -1,0 +1,25 @@
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: myadmin-vpa
+  namespace: myadmin-dev
+  labels:
+    app.kubernetes.io/name: myadmin-vpa
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: myadmin
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myadmin-api
+  updatePolicy:
+    updateMode: "Off" # Désactive les mises à jour automatiques pour éviter les conflits avec le HPA
+  resourcePolicy:
+    containerPolicies:
+    - containerName: "myadmin-core" # Nom du conteneur ciblé dans le déploiement
+      minAllowed:
+        cpu: "100m" # CPU minimum autorisé
+        memory: "128Mi" # Mémoire minimum autorisée
+      maxAllowed:
+        cpu: "1" # CPU maximum autorisé
+        memory: "1Gi" # Mémoire maximum autorisée

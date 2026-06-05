@@ -1,10 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: myadmin-deployment
-  namespace: default
+  name: myadmin-api
+  namespace: myadmin-dev
   labels:
-    app: myadmin
+    app.kubernetes.io/name: myadmin-api
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: myadmin
 spec:
   replicas: 3
   strategy:
@@ -14,11 +16,13 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: myadmin
+      app.kubernetes.io/name: myadmin-api
   template:
     metadata:
       labels:
-        app: myadmin
+        app.kubernetes.io/name: myadmin-api
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: myadmin
     spec:
       imagePullSecrets:
       - name: gar-credentials
@@ -27,6 +31,7 @@ spec:
         image: us-west1-docker.pkg.dev/myadminproject-497120/myadmin-repo/myadmin-app:IMAGE_TAG
         ports:
         - containerPort: 8000
+          name: http-api
         resources:
           limits:
             memory: "256Mi"
@@ -36,14 +41,15 @@ spec:
             cpu: "200m"
         imagePullPolicy: IfNotPresent
         env: 
-          # Injection des variables requises par l'application Python
+          # Injection de la variable d'environnement ENV pour différencier les environnements (dev, prod)
           - name: ENV
-            value: "production"
-          - name: DATABASE_URL
-            # Utilisation du nom du service K3s comme hôte
-            value: "mysql+pymysql://myadmin_user:MyAdminUserProd@myadmin-db-service:3306/myadmin_db"
-
+            value: "development"
           # Récupération des secrets depuis Kubernetes
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: mysql-production-secrets
+                key: db-url
           - name: SECRET_KEY
             valueFrom:
               secretKeyRef:
@@ -58,23 +64,32 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: myadmin-service
-  namespace: default
+  name: myadmin-api-service
+  namespace: myadmin-dev
+  labels:
+    app.kubernetes.io/name: myadmin-api
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: myadmin
 spec:
   type: ClusterIP
   ports:
-  - port: 80         # Le port exposé par le service K3s aux autres composants (ex: Ingress)
-    targetPort: 8000 # Redirige proprement vers le port 8000 du conteneur Python
+  - port: 80         # Exposition du service sur le port 80 pour une redirection propre depuis l'Ingress
+    targetPort: http-api # Correspond au nom du port défini dans le conteneur
+    name: http # Nom du port pour une référence claire dans l'Ingress
   selector:
-    app: myadmin
+    app.kubernetes.io/name: myadmin-api
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: myadmin-ingress
-  namespace: default
+  name: myadmin-api-ingress
+  namespace: myadmin-dev
   annotations:
     ingress.kubernetes.io/ssl-redirect: "false"
+  labels:
+    app.kubernetes.io/name: myadmin-api
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: myadmin
 spec:
   rules:
   - http:
@@ -83,6 +98,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: myadmin-service
+            name: myadmin-api-service
             port:
-              number: 80 # Rejoint le service sur son port 80
+              name: http

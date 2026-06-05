@@ -1,8 +1,10 @@
+// Recommande d'utiliser la configuration native SCM de Jenkins (Pipeline script from SCM) pour ce Jenkinsfile, pointant vers la branche contenant ce code (https://github.com/Andrainarivo/Iass-MyAdmin.git).
+
 pipeline {
     agent any
 
     environment {
-        // Configuration GCP & Registre
+        // Configuration GCP & GAR (Google Artifact Registry)
         GCP_PROJECT     = 'myadminproject-497120'
         GCP_REGION      = 'us-west1'
         GCP_ZONE        = 'us-west1-a'
@@ -17,11 +19,10 @@ pipeline {
     }
 
     stages {
-        stage('Clonage des Dépots') {
+        stage('Clonage des dépôts') {
             steps {
                 script {
-                    echo "=== 1. Récupération de l'infra ==="
-                    // Recommande d'utiliser la configuration native SCM de Jenkins
+                    echo "=== 1. Récupération du de l'infrastructure de l'API ==="
                     checkout scm
 
                     echo "=== 2. Récupération du code source de l'API ==="
@@ -51,7 +52,13 @@ pipeline {
             steps {
                 script {
                     echo "=== Build de l'image MyAdmin ==="
-                    sh "docker build -t ${GAR_URL}:${env.GIT_COMMIT_SHA} -t ${GAR_URL}:latest -f docker/api/Dockerfile api-src/"
+                    sh """
+                        docker build \
+                            --build-arg GIT_COMMIT_SHA=${env.GIT_COMMIT_SHA} \
+                            -t ${GAR_URL}:${env.GIT_COMMIT_SHA} \
+                            -t ${GAR_URL}:latest \
+                            -f docker/api/Dockerfile .
+                    """
                 }
             }
         }
@@ -68,28 +75,29 @@ pipeline {
             }
         }
 
-        stage('Déploiement K3s (GitOps IAP)') {
+        stage('Déploiement K3s via SSH (IAP)') {
             steps {
                 script {
                     echo "=== Préparation du manifeste avec le bon tag de version ==="
                     sh "sed -i 's/IMAGE_TAG/${env.GIT_COMMIT_SHA}/g' k3s/myadmin.yaml"
 
-                    echo "=== Envoi du manifeste sur le Master K3s ==="
-                    // Ajout du drapeau --quiet pour empêcher gcloud de demander une validation de clé SSH
-                    sh """
-                        gcloud compute ssh ${MASTER_VM_NAME} \
-                            --tunnel-through-iap \
-                            --zone=${GCP_ZONE} \
-                            --project=${GCP_PROJECT} \
-                            --quiet \
-                            --command='cat > /tmp/myadmin.yaml' < k3s/myadmin.yaml
-                    """
+                    echo "=== Envoi de tous les manifestes sur le Master K3s ==="
+                    def manifestes = ['namespaces.yaml', 'secrets.yaml', 'mysql.yaml', 'myadmin.yaml', 'hpa.yaml', 'vpa.yaml']
+                    
+                    for (fichier in manifestes) {
+                        sh """
+                            gcloud compute ssh ${MASTER_VM_NAME} \
+                                --tunnel-through-iap \
+                                --zone=${GCP_ZONE} \
+                                --project=${GCP_PROJECT} \
+                                --quiet \
+                                --command='cat > /tmp/${fichier}' < k3s/${fichier}
+                        """
+                    }
 
                     echo "=== Génération d'un jeton éphémère et mise à jour du secret K3s ==="
-                    // Jenkins génère un token d'accès temporaire
                     def gcpToken = sh(script: "gcloud auth print-access-token", returnStdout: true).trim()
 
-                    // On envoie ce token à K3s pour mettre à jour le secret (Note le username 'oauth2accesstoken')
                     sh """
                         gcloud compute ssh ${MASTER_VM_NAME} \
                             --tunnel-through-iap \
@@ -103,14 +111,22 @@ pipeline {
                                 --dry-run=client -o yaml | sudo kubectl apply -f -"
                     """
 
-                    echo "=== Application du manifeste sur le cluster ==="
+                    echo "=== Application ordonnée des configurations sur le cluster ==="
+                    // ORDRE : Namespaces -> Secrets -> BDD -> Application -> Auto-scaling
                     sh """
                         gcloud compute ssh ${MASTER_VM_NAME} \
                             --tunnel-through-iap \
                             --zone=${GCP_ZONE} \
                             --project=${GCP_PROJECT} \
                             --quiet \
-                            --command='sudo kubectl apply -f /tmp/myadmin.yaml'
+                            --command='
+                                sudo kubectl apply -f /tmp/namespaces.yaml && \
+                                sudo kubectl apply -f /tmp/secrets.yaml && \
+                                sudo kubectl apply -f /tmp/mysql.yaml && \
+                                sudo kubectl apply -f /tmp/myadmin.yaml && \
+                                sudo kubectl apply -f /tmp/hpa.yaml && \
+                                sudo kubectl apply -f /tmp/vpa.yaml
+                            '
                     """
                 }
             }

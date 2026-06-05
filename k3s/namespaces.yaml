@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myadmin-prod
+  labels:
+    app.kubernetes.io/name: myadmin-prod
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: myadmin
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myadmin-dev
+  labels:
+    app.kubernetes.io/name: myadmin-dev
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: myadmin
