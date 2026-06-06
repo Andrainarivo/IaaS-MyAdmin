@@ -44,7 +44,7 @@ spec:
       containers:
       - name: mysql
         image: mysql:8.0.46 # Version officielle de MySQL 8.0
-        command: ["mysqld", "--host-cache-size=0"] # Désactive le cache d'hôtes pour éviter les problèmes de résolution DNS dans Kubernetes
+        args: ["--host-cache-size=0"] # Désactive le cache d'hôtes pour éviter les problèmes de résolution DNS dans Kubernetes
         ports:
         - containerPort: 3306
           name: mysql
