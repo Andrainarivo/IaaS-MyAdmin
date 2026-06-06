@@ -45,8 +45,8 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: gcloud-kubectl
-            # Cette image officielle Google contient à la fois gcloud et kubectl sous Alpine
-            image: google/cloud-sdk:alpine
+            # CORRECTION : Changement vers l'image Debian qui inclut kubectl nativement
+            image: google/cloud-sdk:latest
             command:
             - /bin/bash
             - -c
