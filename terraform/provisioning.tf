@@ -24,6 +24,26 @@ resource "terraform_data" "install_k3s_master" {
   }
 }
 
+# Ce bloc va se réexécuter AUTOMATIQUEMENT dès que le script 'addons.sh' est modifié.
+resource "terraform_data" "install_k3s_addons" {
+  depends_on = [terraform_data.install_k3s_master]
+
+  # Calcule le hash du script. Si le script change, Terraform réexécute ce bloc.
+  triggers_replace = [
+    md5(file("${path.root}/scripts/addons.sh"))
+  ]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      gcloud compute ssh myadmin-k3s-master \
+        --tunnel-through-iap \
+        --zone=${var.zone} \
+        --project=${var.project_id} \
+        --command='sudo -E bash -s' < ${path.root}/scripts/addons.sh
+    EOT
+  }
+}
+
 # Installation du premier Worker
 resource "terraform_data" "install_k3s_worker" {
   # Attend que la pause soit finie ET que le Master soit totalement prêt

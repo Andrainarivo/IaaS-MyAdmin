@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,41 +26,42 @@ spec:
         app.kubernetes.io/part-of: myadmin
     spec:
       imagePullSecrets:
-      - name: gar-credentials
+        - name: gar-credentials
       containers:
-      - name: myadmin-core
-        image: us-west1-docker.pkg.dev/myadminproject-497120/myadmin-repo/myadmin-app:IMAGE_TAG
-        ports:
-        - containerPort: 8000
-          name: http-api
-        resources:
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-          requests:
-            memory: "128Mi"
-            cpu: "200m"
-        imagePullPolicy: IfNotPresent
-        env: 
-          # Injection de la variable d'environnement ENV pour différencier les environnements (dev, prod)
-          - name: ENV
-            value: "development"
-          # Récupération des secrets depuis Kubernetes
-          - name: DATABASE_URL
-            valueFrom:
-              secretKeyRef:
-                name: mysql-production-secrets
-                key: db-url
-          - name: SECRET_KEY
-            valueFrom:
-              secretKeyRef:
-                name: myadmin-api-secrets
-                key: secret-key
-          - name: ENCRYPTION_KEY
-            valueFrom:
-              secretKeyRef:
-                name: myadmin-api-secrets
-                key: encryption-key
+        - name: myadmin-core
+          # yamllint disable-line rule:line-length
+          image: us-west1-docker.pkg.dev/myadminproject-497120/myadmin-repo/myadmin-app:IMAGE_TAG
+          ports:
+            - containerPort: 8000
+              name: http-api
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+            requests:
+              memory: "128Mi"
+              cpu: "200m"
+          imagePullPolicy: IfNotPresent
+          env:
+            # Injection de la variable ENV pour différencier les environnements
+            - name: ENV
+              value: "development"
+            # Récupération des secrets depuis Kubernetes
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-production-secrets
+                  key: db-url
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: myadmin-api-secrets
+                  key: secret-key
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: myadmin-api-secrets
+                  key: encryption-key
 ---
 apiVersion: v1
 kind: Service
@@ -73,9 +75,12 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 80         # Exposition du service sur le port 80 pour une redirection propre depuis l'Ingress
-    targetPort: http-api # Correspond au nom du port défini dans le conteneur
-    name: http # Nom du port pour une référence claire dans l'Ingress
+    # Exposition sur le port 80 pour une redirection propre depuis l'Ingress
+    - port: 80
+      # Correspond au nom du port défini dans le conteneur
+      targetPort: http-api
+      # Nom du port pour une référence claire dans l'Ingress
+      name: http
   selector:
     app.kubernetes.io/name: myadmin-api
 ---
@@ -92,12 +97,12 @@ metadata:
     app.kubernetes.io/part-of: myadmin
 spec:
   rules:
-  - http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: myadmin-api-service
-            port:
-              name: http
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myadmin-api-service
+                port:
+                  name: http

@@ -29,8 +29,6 @@ pipeline {
                     dir('api-src') {
                         git url: "${env.API_REPO_URL}", branch: "${env.API_BRANCH}"
                         env.GIT_COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-
-                        
                     }
                     
                     echo "Version identifiée pour ce build : ${env.GIT_COMMIT_SHA}"
@@ -52,13 +50,16 @@ pipeline {
             steps {
                 script {
                     echo "=== Build de l'image MyAdmin ==="
-                    sh """
-                        docker build \
-                            --build-arg GIT_COMMIT_SHA=${env.GIT_COMMIT_SHA} \
-                            -t ${GAR_URL}:${env.GIT_COMMIT_SHA} \
-                            -t ${GAR_URL}:latest \
-                            -f docker/api/Dockerfile .
-                    """
+                    // Le build se fait dans le contexte de l'API pour que le Dockerfile puisse accéder à tous les fichiers nécessaires
+                    dir('api-src') {
+                        sh """
+                            docker build \
+                                --build-arg GIT_COMMIT_SHA=${env.GIT_COMMIT_SHA} \
+                                -t ${GAR_URL}:${env.GIT_COMMIT_SHA} \
+                                -t ${GAR_URL}:latest \
+                                -f docker/api/Dockerfile .
+                        """
+                    }
                 }
             }
         }
@@ -82,7 +83,7 @@ pipeline {
                     sh "sed -i 's/IMAGE_TAG/${env.GIT_COMMIT_SHA}/g' k3s/myadmin.yaml"
 
                     echo "=== Envoi de tous les manifestes sur le Master K3s ==="
-                    def manifestes = ['namespaces.yaml', 'secrets.yaml', 'mysql.yaml', 'myadmin.yaml', 'hpa.yaml', 'vpa.yaml']
+                    def manifestes = ['namespaces.yaml', 'secrets.yaml', 'mysql.yaml', 'myadmin.yaml', 'hpa.yaml', 'vpa.yaml', 'gar-refresher.yaml']
                     
                     for (fichier in manifestes) {
                         sh """
@@ -95,24 +96,8 @@ pipeline {
                         """
                     }
 
-                    echo "=== Génération d'un jeton éphémère et mise à jour du secret K3s ==="
-                    def gcpToken = sh(script: "gcloud auth print-access-token", returnStdout: true).trim()
-
-                    sh """
-                        gcloud compute ssh ${MASTER_VM_NAME} \
-                            --tunnel-through-iap \
-                            --zone=${GCP_ZONE} \
-                            --project=${GCP_PROJECT} \
-                            --quiet \
-                            --command="sudo kubectl create secret docker-registry gar-credentials \
-                                --docker-server=${GCP_REGION}-docker.pkg.dev \
-                                --docker-username=oauth2accesstoken \
-                                --docker-password=${gcpToken} \
-                                --dry-run=client -o yaml | sudo kubectl apply -f -"
-                    """
-
                     echo "=== Application ordonnée des configurations sur le cluster ==="
-                    // ORDRE : Namespaces -> Secrets -> BDD -> Application -> Auto-scaling
+                    // ORDRE : Namespaces -> Gar Refresher -> Secrets -> BDD -> Application -> Auto-scaling
                     sh """
                         gcloud compute ssh ${MASTER_VM_NAME} \
                             --tunnel-through-iap \
@@ -121,6 +106,12 @@ pipeline {
                             --quiet \
                             --command='
                                 sudo kubectl apply -f /tmp/namespaces.yaml && \
+                                sudo kubectl apply -f /tmp/gar-refresher.yaml && \
+                                \
+                                echo "=== Initialisation immédiate du token GAR depuis le cluster ===" && \
+                                sudo kubectl create job --from=cronjob/gar-token-refresher gar-token-init -n myadmin-dev || true && \
+                                \
+                                echo "=== Déploiement des ressources applicatives ===" && \
                                 sudo kubectl apply -f /tmp/secrets.yaml && \
                                 sudo kubectl apply -f /tmp/mysql.yaml && \
                                 sudo kubectl apply -f /tmp/myadmin.yaml && \
