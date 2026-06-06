@@ -50,16 +50,16 @@ pipeline {
             steps {
                 script {
                     echo "=== Build de l'image MyAdmin ==="
-                    // Le build se fait dans le contexte de l'API pour que le Dockerfile puisse accéder à tous les fichiers nécessaires
-                    dir('api-src') {
-                        sh """
-                            docker build \
-                                --build-arg GIT_COMMIT_SHA=${env.GIT_COMMIT_SHA} \
-                                -t ${GAR_URL}:${env.GIT_COMMIT_SHA} \
-                                -t ${GAR_URL}:latest \
-                                -f docker/api/Dockerfile .
-                        """
-                    }
+
+                    // Construction de l'image Docker avec les tags basés sur le SHA du commit et 'latest'
+                    // Le dernier argument 'api-src' définit le contexte de build, pointant vers le dossier contenant le Dockerfile et le code source de l'API
+                    sh """
+                        docker build \
+                            --build-arg GIT_COMMIT_SHA=${env.GIT_COMMIT_SHA} \
+                            -t ${GAR_URL}:${env.GIT_COMMIT_SHA} \
+                            -t ${GAR_URL}:latest \
+                            -f docker/api/Dockerfile api-src/
+                    """
                 }
             }
         }
