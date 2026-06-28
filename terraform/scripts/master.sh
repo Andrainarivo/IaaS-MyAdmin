@@ -24,10 +24,9 @@ kubectl wait --for=condition=Ready node/$(hostname) --timeout=60s
 echo "=== Cluster K3s prêt ==="
 
 echo "=== Installation du Vertical Pod Autoscaler (VPA) ==="
-rm -rf /tmp/autoscaler
-git clone https://github.com/kubernetes/autoscaler.git /tmp/autoscaler
-cd /tmp/autoscaler/vertical-pod-autoscaler
-./hack/vpa-up.sh
-rm -rf /tmp/autoscaler
+# Utilisation des manifestes officiels pour une installation stable
+VPA_VERSION="1.1.2" # Spécifier une version stable du VPA
+kubectl apply -f https://github.com/kubernetes/autoscaler/raw/vertical-pod-autoscaler-${VPA_VERSION}/vertical-pod-autoscaler/deploy/vpa-v1-crd-gen.yaml
+kubectl apply -f https://github.com/kubernetes/autoscaler/raw/vertical-pod-autoscaler-${VPA_VERSION}/vertical-pod-autoscaler/deploy/vpa-v1-admission-controller-gen.yaml
 
 echo "=== Installation de K3s terminée et VPA installé avec succès ==="

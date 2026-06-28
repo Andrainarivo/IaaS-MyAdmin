@@ -1,10 +1,10 @@
-// Recommande d'utiliser la configuration native SCM de Jenkins (Pipeline script from SCM) pour ce Jenkinsfile, pointant vers la branche contenant ce code (https://github.com/Andrainarivo/Iass-MyAdmin.git).
+// Recommended to use Jenkins' native SCM configuration (Pipeline script from SCM) for this Jenkinsfile, pointing to the branch containing this code (e.g., https://github.com/Andrainarivo/IasS-MyAdmin.git).
 
 pipeline {
     agent any
 
     environment {
-        // Configuration GCP & GAR (Google Artifact Registry)
+        // GCP & GAR (Google Artifact Registry) Configuration
         GCP_PROJECT     = 'myadminproject-497120'
         GCP_REGION      = 'us-west1'
         GCP_ZONE        = 'us-west1-a'
@@ -12,36 +12,36 @@ pipeline {
         IMAGE_NAME      = 'myadmin-app'
         GAR_URL         = "${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/${GAR_REPO}/${IMAGE_NAME}"
         
-        // Cible de déploiement
+        // Deployment Target
         MASTER_VM_NAME  = 'myadmin-k3s-master'
         API_REPO_URL    = 'https://github.com/Andrainarivo/MyAdmin.git'
         API_BRANCH      = 'main'
     }
 
     stages {
-        stage('Clonage des dépôts') {
+        stage('Clone Repositories') {
             steps {
                 script {
-                    echo "=== 1. Récupération du de l'infrastructure de l'API ==="
+                    echo "=== 1. Fetching the infrastructure code (this repo) ==="
                     checkout scm
 
-                    echo "=== 2. Récupération du code source de l'API ==="
+                    echo "=== 2. Fetching the API source code ==="
                     dir('api-src') {
                         git url: "${env.API_REPO_URL}", branch: "${env.API_BRANCH}"
                         env.GIT_COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     }
                     
-                    echo "Version identifiée pour ce build : ${env.GIT_COMMIT_SHA}"
+                    echo "Version identified for this build: ${env.GIT_COMMIT_SHA}"
                 }
             }
         }
 
-        stage('Validation Manifestes K8s') {
+        stage('Validate K8s Manifests') {
             steps {
                 script {
-                    echo "=== Vérification de la syntaxe des fichiers de déploiement ==="
-                    // Validation de la structure du fichier YAML via un conteneur
-                    sh "docker run --rm -v \$(pwd)/k3s:/apps cytopia/yamllint /apps/myadmin.yaml || echo 'Structure YAML validée'"
+                    echo "=== Verifying syntax of deployment files ==="
+                    // Validate the YAML structure using a containerized linter
+                    sh "docker run --rm -v \$(pwd)/k3s:/apps cytopia/yamllint /apps/myadmin.yaml || echo 'YAML structure validated'"
                 }
             }
         }
@@ -49,26 +49,26 @@ pipeline {
         stage('Docker Build & Tag') {
             steps {
                 script {
-                    echo "=== Build de l'image MyAdmin ==="
+                    echo "=== Building MyAdmin image ==="
 
-                    // Construction de l'image Docker avec les tags basés sur le SHA du commit et 'latest'
-                    // Le dernier argument 'api-src' définit le contexte de build, pointant vers le dossier contenant le Dockerfile et le code source de l'API
+                    // Build the Docker image with tags based on the commit SHA and 'latest'
+                    // The last argument 'api-src' defines the build context, pointing to the folder with the Dockerfile and API source code
                     sh """
                         docker build \
                             --build-arg GIT_COMMIT_SHA=${env.GIT_COMMIT_SHA} \
                             -t ${GAR_URL}:${env.GIT_COMMIT_SHA} \
                             -t ${GAR_URL}:latest \
-                            -f docker/api/Dockerfile api-src/
+                            -f api-src/docker/api/Dockerfile api-src/
                     """
                 }
             }
         }
 
-        stage('Push vers Artifact Registry') {
+        stage('Push to Artifact Registry') {
             steps {
                 script {
-                    echo "=== Authentification et Push sur GAR ==="
-                    // Le --quiet évite tout blocage interactif de gcloud
+                    echo "=== Authenticating and Pushing to GAR ==="
+                    // The --quiet flag prevents any interactive prompts from gcloud
                     sh "gcloud auth configure-docker ${GCP_REGION}-docker.pkg.dev --quiet"
                     sh "docker push ${GAR_URL}:${env.GIT_COMMIT_SHA}"
                     sh "docker push ${GAR_URL}:latest"
@@ -76,13 +76,13 @@ pipeline {
             }
         }
 
-        stage('Déploiement K3s via SSH (IAP)') {
+        stage('Deploy to K3s via SSH (IAP)') {
             steps {
                 script {
-                    echo "=== Préparation du manifeste avec le bon tag de version ==="
+                    echo "=== Preparing manifest with the correct version tag ==="
                     sh "sed -i 's/IMAGE_TAG/${env.GIT_COMMIT_SHA}/g' k3s/myadmin.yaml"
 
-                    echo "=== Envoi de tous les manifestes sur le Master K3s ==="
+                    echo "=== Sending all manifests to the K3s Master ==="
                     def manifestes = ['namespaces.yaml', 'secrets.yaml', 'mysql.yaml', 'myadmin.yaml', 'hpa.yaml', 'vpa.yaml', 'gar-refresher.yaml']
                     
                     for (fichier in manifestes) {
@@ -96,8 +96,8 @@ pipeline {
                         """
                     }
 
-                    echo "=== Application ordonnée des configurations sur le cluster ==="
-                    // ORDRE : Namespaces -> Gar Refresher -> Secrets -> BDD -> Application -> Auto-scaling
+                    echo "=== Applying configurations to the cluster in order ==="
+                    // ORDER: Namespaces -> GAR Refresher -> Secrets -> DB -> Application -> Auto-scaling
                     sh """
                         gcloud compute ssh ${MASTER_VM_NAME} \
                             --tunnel-through-iap \
@@ -108,10 +108,10 @@ pipeline {
                                 sudo kubectl apply -f /tmp/namespaces.yaml && \
                                 sudo kubectl apply -f /tmp/gar-refresher.yaml && \
                                 \
-                                echo "=== Initialisation immédiate du token GAR depuis le cluster ===" && \
+                                echo "=== Immediately initializing GAR token from within the cluster ===" && \
                                 sudo kubectl create job --from=cronjob/gar-token-refresher gar-token-init -n myadmin-dev || true && \
                                 \
-                                echo "=== Déploiement des ressources applicatives ===" && \
+                                echo "=== Deploying application resources ===" && \
                                 sudo kubectl apply -f /tmp/secrets.yaml && \
                                 sudo kubectl apply -f /tmp/mysql.yaml && \
                                 sudo kubectl apply -f /tmp/myadmin.yaml && \
@@ -126,13 +126,13 @@ pipeline {
 
     post {
         success {
-            echo "Déploiement de MyAdmin version ${env.GIT_COMMIT_SHA} réussi avec succès !"
+            echo "Deployment of MyAdmin version ${env.GIT_COMMIT_SHA} succeeded!"
         }
         failure {
-            echo "Échec du pipeline. Une anomalie a été détectée."
+            echo "Pipeline failed. An anomaly was detected."
         }
         cleanup {
-            echo "Nettoyage des images locales sur le runner DinD..."
+            echo "Cleaning up local images on the DinD runner..."
             sh "docker rmi ${GAR_URL}:${env.GIT_COMMIT_SHA} ${GAR_URL}:latest || true"
         }
     }

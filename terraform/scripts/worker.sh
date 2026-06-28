@@ -1,15 +1,17 @@
 #!/bin/bash
 set -e
 
-echo "=== Début de l'installation du Worker K3s ==="
-apt-get update && apt-get install -y curl netcat-openbsd
+echo "=== Starting K3s Worker installation ==="
+apt-get update && apt-get install -y curl
 
-# Attente de la disponibilité de l'API Kubernetes du master
-until nc -z -v -w5 "${MASTER_IP}" 6443; do
-  echo "En attente du Master K3s (${MASTER_IP}:6443)..."
-  sleep 5
-done
+if [ -z "$MASTER_IP" ] || [ -z "$K3S_TOKEN" ]; then
+  echo "Error: MASTER_IP and K3S_TOKEN environment variables must be set."
+  exit 1
+fi
 
-# Connexion au master en tant qu'agent worker
-curl -sfL https://get.k3s.io | K3S_TOKEN="${K3S_TOKEN}" K3S_URL="https://${MASTER_IP}:6443" sh -s - agent \
-  --node-ip=$(hostname -I | awk '{print $1}')
+# Install K3s agent, pointing to the master node
+curl -sfL https://get.k3s.io | sh -s - agent \
+  --server https://${MASTER_IP}:6443 \
+  --token ${K3S_TOKEN}
+
+echo "=== K3s Worker installation complete. Node should join the cluster shortly. ==="
