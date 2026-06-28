@@ -43,10 +43,10 @@ spec:
               cpu: "200m"
           imagePullPolicy: IfNotPresent
           env:
-            # Injection de la variable ENV pour différencier les environnements
+            # Inject the ENV variable to differentiate environments
             - name: ENV
               value: "development"
-            # Récupération des secrets depuis Kubernetes
+            # Retrieve secrets from Kubernetes
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -75,11 +75,11 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    # Exposition sur le port 80 pour une redirection propre depuis l'Ingress
+    # Expose on port 80 for a clean redirect from the Ingress
     - port: 80
-      # Correspond au nom du port défini dans le conteneur
+      # Corresponds to the port name defined in the container
       targetPort: http-api
-      # Nom du port pour une référence claire dans l'Ingress
+      # Port name for a clear reference in the Ingress
       name: http
   selector:
     app.kubernetes.io/name: myadmin-api

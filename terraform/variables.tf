@@ -1,22 +1,22 @@
 variable "project_id" {
-  description = "L'ID unique du projet GCP créé sur la console"
+  description = "The unique ID of the GCP project created in the console"
   type        = string
 }
 
 variable "region" {
-  description = "Région GCP par défaut"
+  description = "Default GCP region"
   type        = string
   default     = "us-west1"
 }
 
 variable "zone" {
-  description = "Zone GCP par défaut"
+  description = "Default GCP zone"
   type        = string
   default     = "us-west1-a"
 }
 
 variable "k3s_token" {
-  description = "Token secret pré-partagé pour coupler le Master et les Workers k3s"
+  description = "Pre-shared secret token to join K3s Master and Workers"
   type        = string
   sensitive   = true
 }

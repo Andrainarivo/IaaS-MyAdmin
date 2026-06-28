@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Début de l'installation du Master K3s ==="
+echo "=== Starting K3s Master installation ==="
 apt-get update && apt-get install -y curl
 
 # Install K3s with the token for agent nodes to join the cluster
@@ -11,22 +11,22 @@ curl -sfL https://get.k3s.io | K3S_TOKEN="${K3S_TOKEN}" sh -s - server \
 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
-echo "=== Attente que le cluster soit prêt ==="
+echo "=== Waiting for the cluster to be ready ==="
 until kubectl get nodes &>/dev/null; do
-  echo "L'APIserver n'est pas encore prêt, attente de 3 secondes..."
+  echo "API server is not ready yet, waiting 3 seconds..."
   sleep 3
 done
 
-echo "=== Attente que le nœud Master passe au statut Ready ==="
-# 2. On utilise la commande native K8s pour attendre le statut Ready du master
+echo "=== Waiting for the Master node to be Ready ==="
+# 2. Use the native K8s command to wait for the master to be Ready
 kubectl wait --for=condition=Ready node/$(hostname) --timeout=60s
 
-echo "=== Cluster K3s prêt ==="
+echo "=== K3s cluster is ready ==="
 
-echo "=== Installation du Vertical Pod Autoscaler (VPA) ==="
-# Utilisation des manifestes officiels pour une installation stable
-VPA_VERSION="1.1.2" # Spécifier une version stable du VPA
+echo "=== Installing Vertical Pod Autoscaler (VPA) ==="
+# Use official manifests for a stable installation
+VPA_VERSION="1.1.2" # Specify a stable VPA version
 kubectl apply -f https://github.com/kubernetes/autoscaler/raw/vertical-pod-autoscaler-${VPA_VERSION}/vertical-pod-autoscaler/deploy/vpa-v1-crd-gen.yaml
 kubectl apply -f https://github.com/kubernetes/autoscaler/raw/vertical-pod-autoscaler-${VPA_VERSION}/vertical-pod-autoscaler/deploy/vpa-v1-admission-controller-gen.yaml
 
-echo "=== Installation de K3s terminée et VPA installé avec succès ==="
+echo "=== K3s installation finished and VPA installed successfully ==="

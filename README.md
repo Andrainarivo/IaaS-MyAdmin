@@ -40,10 +40,10 @@ Before you begin, ensure you have the following tools installed and configured:
 
 For a detailed description of each module, please consult the dedicated [documentation](docs/project-structure.md).
 
-## Guide de déploiement
+## Deployment Guide
 
-Consultez le [guide de déploiement Terraform](docs/terraform-guide.md) pour les instructions étape par étape sur la création de l'infrastructure.
+Consult the [Terraform deployment guide](docs/terraform-guide.md) for step-by-step instructions on creating the infrastructure.
 
-## Développement local
+## Local Development
 
-Pour travailler sur l'application sans déployer toute l'infrastructure, vous pouvez utiliser l'environnement Docker Compose. Consultez le [guide de développement local](docs/local-development.md) pour plus de détails.
+To work on the application without deploying the entire infrastructure, you can use the Docker Compose environment. See the [local development guide](docs/local-development.md) for more details.

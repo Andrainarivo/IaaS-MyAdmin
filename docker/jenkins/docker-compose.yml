@@ -9,7 +9,7 @@ volumes:
     name: jenkins-docker-certs
 
 services:
-  # 1. Le Sidecar Docker (DinD) - Fournit un environnement Docker sécurisé pour Jenkins
+  # 1. The Docker Sidecar (DinD) - Provides a secure Docker environment for Jenkins
   docker-dind:
     image: docker:dind
     container_name: jenkins-docker
@@ -26,7 +26,7 @@ services:
       - jenkins-data:/var/jenkins_home
     command: --storage-driver overlay2
 
-  # 2. Le Contrôleur Jenkins - Gère les tâches CI/CD et interagit avec le Sidecar Docker
+  # 2. The Jenkins Controller - Manages CI/CD jobs and interacts with the Docker Sidecar
   jenkins:
     build: .
     container_name: myadmin-jenkins

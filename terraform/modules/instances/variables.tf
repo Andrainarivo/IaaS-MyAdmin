@@ -1,38 +1,44 @@
 variable "project_id" {
   type        = string
-  description = "ID du projet GCP"
+  description = "GCP Project ID"
 }
 
 variable "zone" {
   type        = string
-  description = "Zone de déploiement des instances"
+  description = "Deployment zone for the instances"
 }
 
 variable "subnet_id" {
   type        = string
-  description = "ID du sous-réseau où connecter les VMs"
+  description = "ID of the subnet where the VMs will be connected"
 }
 
 variable "k3s_token" {
   type        = string
-  description = "Token secret pré-partagé pour le cluster"
+  description = "Pre-shared secret token for the cluster"
   sensitive   = true
+}
+
+variable "worker_count" {
+  type        = number
+  description = "The number of K3s worker nodes to create"
+  default     = 2
 }
 
 variable "machine_type" {
   type        = string
   default     = "e2-small"
-  description = "Le type d'instance GCP à utiliser pour les nœuds du cluster"
+  description = "The GCP instance type to use for the cluster nodes"
 }
 
 variable "boot_image" {
   type        = string
   default     = "ubuntu-os-cloud/ubuntu-2204-lts"
-  description = "L'image de l'OS à utiliser pour le cluster"
+  description = "The OS image to use for the cluster"
 }
 
 variable "disk_size_gb" {
   type        = number
   default     = 20
-  description = "La taille du disque de démarrage en Go"
+  description = "The size of the boot disk in GB"
 }

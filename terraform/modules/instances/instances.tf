@@ -1,17 +1,17 @@
-# 1. Compte de Service Dédié pour K3s
+# 1. Dedicated Service Account for K3s
 resource "google_service_account" "k3s_sa" {
   account_id   = "myadmin-k3s-sa"
-  display_name = "Compte de service pour les nœuds du cluster k3s"
+  display_name = "Service account for the K3s cluster nodes"
 }
 
-# 2. Lien IAM vers l'Artifact Registry pour K3s
+# 2. IAM binding to Artifact Registry for K3s
 resource "google_project_iam_member" "registry_viewer" {
   project = var.project_id
   role    = "roles/artifactregistry.reader"
   member  = "serviceAccount:${google_service_account.k3s_sa.email}"
 }
 
-# 3. VM MASTER K3s
+# 3. K3s MASTER VM
 resource "google_compute_instance" "k3s_master" {
   name         = "myadmin-k3s-master"
   machine_type = var.machine_type
@@ -37,10 +37,11 @@ resource "google_compute_instance" "k3s_master" {
   tags = ["k3s-node"]
 }
 
-# 4. VMs WORKER K3s
+# 4. K3s WORKER VMs
 resource "google_compute_instance" "k3s_worker" {
-  name         = "myadmin-k3s-worker"
+  count        = var.worker_count
   machine_type = var.machine_type
+  name         = "myadmin-k3s-worker-${count.index}"
   zone         = var.zone
 
   boot_disk {
@@ -63,86 +64,60 @@ resource "google_compute_instance" "k3s_worker" {
   tags = ["k3s-node"]
 }
 
-resource "google_compute_instance" "k3s_worker2" {
-  name         = "myadmin-k3s-worker2"
-  machine_type = var.machine_type
-  zone         = var.zone
-
-  boot_disk {
-    initialize_params {
-      image = var.boot_image
-      size  = var.disk_size_gb
-    }
-  }
-
-  network_interface {
-    subnetwork = var.subnet_id
-    access_config {}
-  }
-
-  service_account {
-    email  = google_service_account.k3s_sa.email
-    scopes = ["cloud-platform"]
-  }
-
-  tags = ["k3s-node"]
-
-}
-
 # =========================================================================
-#                   CONFIGURATION DE LA VM JENKINS
+#                   JENKINS VM CONFIGURATION
 # =========================================================================
 
-# 5. Compte de Service Dédié pour la VM Jenkins
+# 5. Dedicated Service Account for the Jenkins VM
 resource "google_service_account" "jenkins_sa" {
   account_id   = "myadmin-jenkins-sa"
-  display_name = "Service Account pour la VM de Management Jenkins"
+  display_name = "Service Account for the Jenkins Management VM"
 }
 
-# 6. Rôles IAM requis pour le pipeline Jenkins via IAP
-# Autoriser Jenkins à utiliser IAP pour se connecter aux VMs Compute Engine
+# 6. Required IAM roles for the Jenkins pipeline via IAP
+# Allow Jenkins to use IAP to connect to Compute Engine VMs
 resource "google_project_iam_member" "jenkins_iap_tunnel" {
   project = var.project_id
   role    = "roles/iap.tunnelResourceAccessor"
   member  = "serviceAccount:${google_service_account.jenkins_sa.email}"
 }
 
-# Autoriser Jenkins à voir les instances Compute Engine (pour IAP)
+# Allow Jenkins to view Compute Engine instances (for IAP)
 resource "google_project_iam_member" "jenkins_compute_viewer" {
   project = var.project_id
   role    = "roles/compute.viewer"
   member  = "serviceAccount:${google_service_account.jenkins_sa.email}"
 }
 
-# Autoriser Jenkins à se connecter en SSH aux VMs Compute Engine via IAP
+# Allow Jenkins to SSH into Compute Engine VMs via IAP
 resource "google_project_iam_member" "jenkins_os_login" {
   project = var.project_id
   role    = "roles/compute.osAdminLogin"
   member  = "serviceAccount:${google_service_account.jenkins_sa.email}"
 }
 
-# Autoriser Jenkins à pousser les images Docker dans l'Artifact Registry
+# Allow Jenkins to push Docker images to Artifact Registry
 resource "google_project_iam_member" "jenkins_registry_writer" {
   project = var.project_id
-  role    = "roles/artifactregistry.writer" # "writer" pour pouvoir push (K3s n'a que "reader")
+  role    = "roles/artifactregistry.writer" # "writer" to be able to push (K3s only has "reader")
   member  = "serviceAccount:${google_service_account.jenkins_sa.email}"
 }
 
-# Autoriser Jenkins à gérer les instances (requis pour injecter les clés SSH dans les métadonnées)
-resource "google_project_iam_member" "jenkins_compute_admin" {
-  project = var.project_id
-  role    = "roles/compute.instanceAdmin.v1" # Apporte la permission compute.instances.setMetadata
-  member  = "serviceAccount:${google_service_account.jenkins_sa.email}"
-}
-
-# Autoriser Jenkins à agir en tant que compte de service K3s (Requis pour l'accès SSH)
+# Allow Jenkins to act as the K3s service account (Required for SSH access)
 resource "google_service_account_iam_member" "jenkins_as_k3s_user" {
   service_account_id = google_service_account.k3s_sa.name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.jenkins_sa.email}"
 }
 
-# 7. La VM Jenkins
+# Allow Jenkins to manage instances (required to inject SSH keys into metadata)
+resource "google_project_iam_member" "jenkins_compute_admin" {
+  project = var.project_id
+  role    = "roles/compute.instanceAdmin.v1" # Provides the compute.instances.setMetadata permission
+  member  = "serviceAccount:${google_service_account.jenkins_sa.email}"
+}
+
+# 7. The Jenkins VM
 resource "google_compute_instance" "jenkins_ops" {
   name         = "myadmin-ops-jenkins"
   machine_type = "e2-medium"
@@ -158,7 +133,7 @@ resource "google_compute_instance" "jenkins_ops" {
 
   network_interface {
     subnetwork = var.subnet_id
-    # Pas de bloc access_config {} -> Reste privée, accessible uniquement via IAP
+    # No access_config {} block -> Stays private, accessible only via IAP
   }
 
   metadata_startup_script = file("${path.root}/scripts/jenkins.sh")

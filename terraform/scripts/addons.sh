@@ -1,30 +1,30 @@
 #!/bin/bash
 set -e
 
-# Installation des paquets requis
+# Install required packages
 apt-get update && apt-get install -y git openssl
 
-echo "=== Début de la configuration des Addons (VPA) ==="
+echo "=== Starting Addon Configuration (VPA) ==="
 
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
-# Attente active que K3s réponde
+# Actively wait for K3s to respond
 until kubectl get nodes &>/dev/null; do
-  echo "Attente de l'API Server..."
+  echo "Waiting for the API Server..."
   sleep 3
 done
 
-echo "=== Attente que le nœud Master passe au statut Ready ==="
-# On utilise la commande native K8s pour attendre le statut Ready du master
+echo "=== Waiting for the Master node to be Ready ==="
+# Use the native K8s command to wait for the master to be Ready
 kubectl wait --for=condition=Ready node/$(hostname) --timeout=60s
 
-# Déploiement ou mise à jour du VPA
+# Deploy or update VPA
 rm -rf /tmp/autoscaler
 git clone https://github.com/kubernetes/autoscaler.git /tmp/autoscaler
 cd /tmp/autoscaler/vertical-pod-autoscaler
 
-# vpa-up.sh est idempotent (il peut être relancé sans tout casser)
+# vpa-up.sh is idempotent (it can be re-run without breaking anything)
 ./hack/vpa-up.sh
 
 rm -rf /tmp/autoscaler
-echo "=== Addons installés avec succès ==="
+echo "=== Addons installed successfully ==="

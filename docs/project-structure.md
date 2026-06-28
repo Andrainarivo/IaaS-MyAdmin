@@ -1,4 +1,4 @@
-# Documentation: Project Structure
+# Project Structure
 
 This document details the structure of the `IaaS-MyAdmin` project and the role of each component.
 
@@ -35,38 +35,38 @@ IaaS-MyAdmin/
 
 ---
 
-### Répertoire `docs/`
+### `docs/` Directory
 
-Contient toute la documentation du projet.
+Contains all project documentation.
 
-- `project-structure.md`: Ce fichier.
-- `terraform-guide.md`: Instructions pour le déploiement de l'infrastructure avec Terraform.
-- `local-development.md`: Guide pour lancer l'environnement de développement local.
+- `project-structure.md`: This file.
+- `terraform-guide.md`: Instructions for deploying the infrastructure with Terraform.
+- `local-development.md`: Guide for running the local development environment.
 
-### Répertoire `docker/`
+### `docker/` Directory
 
-Contient les configurations pour faire tourner l'application en local.
+Contains configurations for running the application locally.
 
-- `docker/api/docker-compose.yml`: Définit les services `api` et `db` (MySQL) pour un environnement de développement rapide. Il gère les volumes, les variables d'environnement et les dépendances entre services.
+- `docker/api/docker-compose.yml`: Defines the `api` and `db` (MySQL) services for a rapid development environment. It manages volumes, environment variables, and service dependencies.
 
-### Répertoire `k3s/`
+### `k3s/` Directory
 
-Contient les manifestes Kubernetes pour déployer l'application `MyAdmin` sur le cluster.
+Contains the Kubernetes manifests for deploying the `MyAdmin` application on the cluster.
 
-- `myadmin.yaml`: Définit trois objets Kubernetes essentiels :
-  - **Deployment**: Décrit l'état désiré de l'application (image, nombre de réplicas, ressources, variables d'environnement).
-  - **Service**: Expose le Deployment en interne dans le cluster via un `ClusterIP`.
-  - **Ingress**: Gère l'accès externe au Service, permettant au trafic HTTP d'atteindre l'application.
-- `hpa.yaml`: Définit un `HorizontalPodAutoscaler` qui ajuste automatiquement le nombre de pods du `Deployment` en fonction de l'utilisation du CPU.
+- `myadmin.yaml`: Defines three essential Kubernetes objects:
+  - **Deployment**: Describes the desired state of the application (image, number of replicas, resources, environment variables).
+  - **Service**: Exposes the Deployment internally within the cluster via a `ClusterIP`.
+  - **Ingress**: Manages external access to the Service, allowing HTTP traffic to reach the application.
+- `hpa.yaml`: Defines a `HorizontalPodAutoscaler` that automatically adjusts the number of pods in the `Deployment` based on CPU usage.
 
-### Répertoire `terraform/`
+### `terraform/` Directory
 
-Contient tout le code Infrastructure as Code (IaC) pour provisionner l'environnement sur GCP.
+Contains all the Infrastructure as Code (IaC) to provision the environment on GCP.
 
-- `provisioning.tf`: Orchestre l'exécution de scripts de provisionnement sur les VMs après leur création. Il utilise `local-exec` pour se connecter en SSH via IAP et installer K3s.
-- `variables.tf`: Définit les variables globales du projet Terraform (ID du projet, région, etc.).
-- `modules/instances/`: Un module Terraform réutilisable pour créer les instances GCP (master, workers, Jenkins) ainsi que les comptes de service et permissions IAM associés.
-- `scripts/`: Scripts shell exécutés par les provisioners Terraform.
-  - `master.sh`: Script d'installation du nœud master K3s.
-  - `worker.sh` (non fourni): Script d'installation des nœuds workers K3s.
-  - `addons.sh`: Script pour installer des composants additionnels comme le Vertical Pod Autoscaler (VPA).
+- `provisioning.tf`: Orchestrates the execution of provisioning scripts on the VMs after their creation. It uses `local-exec` to connect via SSH through IAP and install K3s.
+- `variables.tf`: Defines the global variables for the Terraform project (project ID, region, etc.).
+- `modules/instances/`: A reusable Terraform module for creating GCP instances (master, workers, Jenkins) as well as the associated service accounts and IAM permissions.
+- `scripts/`: Shell scripts executed by Terraform provisioners.
+  - `master.sh`: Installation script for the K3s master node.
+  - `worker.sh` (not provided): Installation script for the K3s worker nodes.
+  - `addons.sh`: Script to install additional components like the Vertical Pod Autoscaler (VPA).
