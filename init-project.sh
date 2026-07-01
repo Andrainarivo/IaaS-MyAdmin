@@ -66,14 +66,15 @@ echo "Done."
 
 # --- 3. Update Jenkinsfile Default Parameters ---
 echo "-> Updating default parameters in ${JENKINSFILE}..."
-sed -i "s/defaultValue: 'myadminproject'/defaultValue: '${GCP_PROJECT_ID}'/" "$JENKINSFILE"
-sed -i "s/defaultValue: 'us-west1'/defaultValue: '${GCP_REGION}'/" "$JENKINSFILE"
-sed -i "s/defaultValue: 'us-west1-a'/defaultValue: '${GCP_ZONE}'/" "$JENKINSFILE"
+# Use robust sed with extended regex to replace values regardless of their current default
+sed -i -E "s/(string\(name: 'GCP_PROJECT', defaultValue: ')[^']*/\1${GCP_PROJECT_ID}/" "$JENKINSFILE"
+sed -i -E "s/(string\(name: 'GCP_REGION', defaultValue: ')[^']*/\1${GCP_REGION}/" "$JENKINSFILE"
+sed -i -E "s/(string\(name: 'GCP_ZONE', defaultValue: ')[^']*/\1${GCP_ZONE}/" "$JENKINSFILE"
 echo "Done."
 
 # --- 4. Check and Create GCS Backend Bucket ---
 echo "-> Checking for GCS backend bucket: gs://${TFSTATE_BUCKET}"
-if gcloud storage ls "gs://${TFSTATE_BUCKET}" >/dev/null 2>&1; then
+if gcloud storage buckets describe "gs://${TFSTATE_BUCKET}" --project="${GCP_PROJECT_ID}" >/dev/null 2>&1; then
     echo "Bucket already exists. Skipping creation."
 else
     echo "Bucket not found. Creating it now..."

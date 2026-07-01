@@ -4,9 +4,10 @@
 
 locals {
   required_apis = [
-    "compute.googleapis.com", # Compute Engine API is essential for managing VM instances and networking resources
+    "compute.googleapis.com",          # Compute Engine API is essential for managing VM instances and networking resources
     "artifactregistry.googleapis.com", # Artifact Registry API is necessary for creating and managing private container registries
-    "iam.googleapis.com" # IAM API is required for Artifact Registry to manage permissions
+    "iam.googleapis.com",              # IAM API is required for Artifact Registry to manage permissions
+    "storage.googleapis.com"           # Cloud Storage API is required for the Terraform backend bucket
   ]
 }
 
@@ -25,19 +26,5 @@ resource "google_project_service" "gcp_apis" {
 resource "time_sleep" "wait_for_api_propagation" {
   depends_on = [google_project_service.gcp_apis]
 
-  create_duration = "30s"
-}
-
-# ==============================================================================
-# 3. Creation of the Artifact Registry Repository
-# ==============================================================================
-resource "google_artifact_registry_repository" "myadmin_repo" {
-  project       = var.project_id
-  location      = var.region
-  repository_id = "myadmin-repo"
-  description   = "Docker private registry for MyAdmin enterprise applications"
-  format        = "DOCKER"
-
-
-  depends_on = [time_sleep.wait_for_api_propagation] # Ensures that the repository is created only after the APIs are fully propagated
+  create_duration = "120s"
 }

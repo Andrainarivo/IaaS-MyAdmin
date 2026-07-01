@@ -2,7 +2,7 @@
 
 terraform {
   backend "gcs" {
-    bucket = "myadmin-tfstate-myadminproject"
+    bucket = "myadmin-tfstate-myadminproject-501004"
     prefix = "terraform/state"
   }
 }

@@ -1,30 +1,34 @@
 #!/bin/bash
-set -e
+set -e # Exit immediately if a command exits with a non-zero status.
 
 # Install required packages
 apt-get update && apt-get install -y git openssl
 
-echo "=== Starting Addon Configuration (VPA) ==="
+echo "############################################################"
+echo "### Installing K3s Addons ###"
+echo "############################################################"
 
+# Ensure KUBECONFIG is set for subsequent kubectl commands
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
-# Actively wait for K3s to respond
-until kubectl get nodes &>/dev/null; do
-  echo "Waiting for the API Server..."
-  sleep 3
-done
+# --- 1. Install Metrics Server ---
+# The Metrics Server is crucial for HPA (Horizontal Pod Autoscaler) to gather container resource usage.
+echo
+echo "-> Installing Metrics Server..."
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+echo "Metrics Server installation/update command sent."
+echo
 
-echo "=== Waiting for the Master node to be Ready ==="
-# Use the native K8s command to wait for the master to be Ready
-kubectl wait --for=condition=Ready node/$(hostname) --timeout=60s
+# --- 2. Install Vertical Pod Autoscaler (VPA) ---
+# The official installation script `vpa-up.sh`.
+echo "-> Installing Vertical Pod Autoscaler (VPA)..."
+if [ ! -d "autoscaler" ]; then
+    echo "Cloning autoscaler repository..."
+    git clone https://github.com/kubernetes/autoscaler.git
+fi
 
-# Deploy or update VPA
-rm -rf /tmp/autoscaler
-git clone https://github.com/kubernetes/autoscaler.git /tmp/autoscaler
-cd /tmp/autoscaler/vertical-pod-autoscaler
-
-# vpa-up.sh is idempotent (it can be re-run without breaking anything)
+cd autoscaler/vertical-pod-autoscaler
 ./hack/vpa-up.sh
-
-rm -rf /tmp/autoscaler
-echo "=== Addons installed successfully ==="
+cd ../.. # Return to the original directory
+echo "VPA installation/update script finished."
+echo

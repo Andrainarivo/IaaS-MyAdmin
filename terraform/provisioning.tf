@@ -28,7 +28,7 @@ resource "terraform_data" "install_k3s_master" {
 }
 
 # ------------------------------------------------------------------------------
-# Phase 2: Core Platform Infrastructure Addons (Metrics Server, VPA, Ingress)
+# Phase 2: Core Platform Infrastructure Addons (Metrics Server, VPA)
 # ------------------------------------------------------------------------------
 resource "terraform_data" "install_k3s_addons" {
   depends_on = [terraform_data.install_k3s_master]
@@ -55,7 +55,7 @@ resource "terraform_data" "install_k3s_addons" {
 resource "terraform_data" "install_k3s_worker" {
   # Explicit dependency guarantees the control plane is stable before worker attachment
   depends_on = [
-    time_sleep.wait_for_all_vms_boot, 
+    time_sleep.wait_for_all_vms_boot,
     terraform_data.install_k3s_master
   ]
 

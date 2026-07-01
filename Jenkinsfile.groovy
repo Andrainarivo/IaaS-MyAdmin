@@ -4,7 +4,7 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'GCP_PROJECT', defaultValue: 'myadminproject', description: 'GCP Project ID for deployment')
+        string(name: 'GCP_PROJECT', defaultValue: 'myadminproject-501004', description: 'GCP Project ID for deployment')
         string(name: 'GCP_REGION', defaultValue: 'us-west1', description: 'GCP Region for resources (e.g., us-west1)')
         string(name: 'GCP_ZONE', defaultValue: 'us-west1-a', description: 'GCP Zone for VM instances (e.g., us-west1-a)')
         string(name: 'GAR_REPO', defaultValue: 'myadmin-repo', description: 'Name of the repository in Google Artifact Registry')

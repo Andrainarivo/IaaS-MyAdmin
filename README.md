@@ -34,7 +34,6 @@ Before you begin, ensure you have the following tools installed and configured:
 
 * **Google Cloud SDK (`gcloud`)**: Authenticated with an account that has the necessary permissions on your GCP project.
 * **Terraform CLI**: To run the provisioning scripts.
-* **GCP Authentication for Terraform**: Terraform needs credentials to manage resources. The easiest way for a local run is Application Default Credentials (ADC).
 
 ## Project Structure
 
