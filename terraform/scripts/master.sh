@@ -21,12 +21,4 @@ echo "=== Waiting for the Master node to be Ready ==="
 # 2. Use the native K8s command to wait for the master to be Ready
 kubectl wait --for=condition=Ready node/$(hostname) --timeout=60s
 
-echo "=== K3s cluster is ready ==="
-
-echo "=== Installing Vertical Pod Autoscaler (VPA) ==="
-# Use official manifests for a stable installation
-VPA_VERSION="1.1.2" # Specify a stable VPA version
-kubectl apply -f https://github.com/kubernetes/autoscaler/raw/vertical-pod-autoscaler-${VPA_VERSION}/vertical-pod-autoscaler/deploy/vpa-v1-crd-gen.yaml
-kubectl apply -f https://github.com/kubernetes/autoscaler/raw/vertical-pod-autoscaler-${VPA_VERSION}/vertical-pod-autoscaler/deploy/vpa-v1-admission-controller-gen.yaml
-
-echo "=== K3s installation finished and VPA installed successfully ==="
+echo "=== K3s Master installation finished. Cluster is ready for addons. ==="

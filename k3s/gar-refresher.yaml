@@ -45,7 +45,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: gcloud-kubectl
-            # CORRECTION : Changement vers l'image Debian qui inclut kubectl nativement
+            # Changement vers l'image Debian qui inclut kubectl nativement
             image: google/cloud-sdk:latest
             command:
             - /bin/bash
@@ -56,7 +56,7 @@ spec:
               
               echo "=== 2. Recréation dynamique du secret Kubernetes ==="
               kubectl create secret docker-registry gar-credentials \
-                --docker-server=us-west1-docker.pkg.dev \
+                --docker-server=GCP_REGION-docker.pkg.dev \
                 --docker-username=oauth2accesstoken \
                 --docker-password="${GCP_TOKEN}" \
                 --dry-run=client -o yaml | kubectl apply -f -

@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/part-of: myadmin
 spec:
   type: ClusterIP
-  clusterIP: None # Service de type Headless pour permettre l'accès direct aux pods du StatefulSet
+  clusterIP: None # This ensures that the service is headless, allowing direct access to the StatefulSet pods.
   ports:
   - port: 3306
     name: mysql
@@ -39,11 +39,11 @@ spec:
         app.kubernetes.io/part-of: myadmin
     spec:
       nodeSelector:
-        # Force l'exécution sur le worker 1.
+        # This ensures that the MySQL pod is scheduled on a specific node (myadmin-k3s-worker), which can be useful for performance or compliance reasons.
         kubernetes.io/hostname: "myadmin-k3s-worker"
       containers:
       - name: mysql
-        image: mysql:8.0.46 # Version officielle de MySQL 8.0
+        image: mysql:8.0.46 # Using a specific MySQL version ensures compatibility and stability for the application.
         ports:
         - containerPort: 3306
           name: mysql
@@ -79,4 +79,4 @@ spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 2Gi # Taille du disque persistant alloué
+          storage: 2Gi # The size of the persistent volume claim is set to 2Gi, which should be sufficient for the initial database size and expected growth. Adjust as necessary based on application needs.

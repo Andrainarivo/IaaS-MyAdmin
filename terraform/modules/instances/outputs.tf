@@ -3,8 +3,12 @@ output "master_private_ip" {
   description = "L'adresse IP privée du nœud Master K3s"
 }
 
-# Sortie de l'IP privée du Worker pour utilisation dans d'autres modules ou scripts
-#output "worker_private_ip" {
-#  value       = google_compute_instance.k3s_worker.network_interface[0].network_ip
-#  description = "L'adresse IP privée du nœud Worker K3s"
-#}
+output "worker_instances" {
+  description = "A list of the K3s worker instances created, with their name and zone."
+  value = [
+    for instance in google_compute_instance.k3s_worker : {
+      name = instance.name
+      zone = instance.zone
+    }
+  ]
+}

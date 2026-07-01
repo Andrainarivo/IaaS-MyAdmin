@@ -44,6 +44,16 @@ For a detailed description of each module, please consult the dedicated [documen
 
 Consult the [Terraform deployment guide](docs/terraform-guide.md) for step-by-step instructions on creating the infrastructure.
 
+## CI/CD
+
+Terraform will provision all the necessary GCP resources, including enabling the required APIs, creating the Artifact Registry repository, and deploying the K3s cluster and the Jenkins VM. The Jenkins server will be automatically configured and started.
+
+To get the initial Jenkins admin password, you can check the logs of the startup script or run the following command after the VM is created:
+
+```bash
+gcloud compute ssh myadmin-ops-jenkins --zone <YOUR_ZONE> --project <YOUR_PROJECT_ID> --command "sudo docker exec myadmin-jenkins cat /var/jenkins_home/secrets/initialAdminPassword"
+```
+
 ## Local Development
 
 To work on the application without deploying the entire infrastructure, you can use the Docker Compose environment. See the [local development guide](docs/local-development.md) for more details.

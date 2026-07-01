@@ -12,24 +12,30 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: myadmin-api
-  minReplicas: 3             # Ne descend jamais sous 3 pods
-  maxReplicas: 10            # Monte jusqu'à 10 pods max pendant le crash test
+  minReplicas: 3 # Minimum number of pods to maintain during the crash test
+  maxReplicas: 10 # Maximum number of pods to scale up to during the crash test
   metrics:
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 70 # Déclenche le scale-up à 70% d'utilisation CPU
+        averageUtilization: 70 # Target average CPU utilization percentage for scaling. If the average CPU usage across all pods exceeds this value, the HPA will scale up the number of pods.
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70 # Target average memory utilization percentage for scaling.
   behavior:
     scaleUp:
       policies:
       - type: Percent
         value: 100
-        periodSeconds: 15 # Ne pas augmenter plus de 100% toutes les 15 secondes pour éviter les sur-réactions
+        periodSeconds: 15 # Not to scale up more than 100% every 15 seconds to avoid overreaction
     scaleDown:
       policies:
       - type: Percent
         value: 100
-        periodSeconds: 15 # Ne pas réduire plus de 100% toutes les 15 secondes pour éviter les sur-réactions
-      stabilizationWindowSeconds: 300 # Attendre 5 minutes avant de réduire les pods pour éviter les oscillations
+        periodSeconds: 15 # Not to scale down more than 100% every 15 seconds to avoid overreaction
+      stabilizationWindowSeconds: 300 # Wait 5 minutes before reducing pods to avoid oscillations

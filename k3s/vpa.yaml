@@ -13,13 +13,13 @@ spec:
     kind: Deployment
     name: myadmin-api
   updatePolicy:
-    updateMode: "Off" # Désactive les mises à jour automatiques pour éviter les conflits avec le HPA
+    updateMode: "Off" # This allows for manual control over resource allocation, ensuring that changes are deliberate and tested before being applied to the deployment.
   resourcePolicy:
     containerPolicies:
-    - containerName: "myadmin-core" # Nom du conteneur ciblé dans le déploiement
+    - containerName: "myadmin-core" # This allows for fine-grained control over resource allocation for specific containers, rather than applying a blanket policy to all containers in the pod.
       minAllowed:
-        cpu: "100m" # CPU minimum autorisé
-        memory: "128Mi" # Mémoire minimum autorisée
+        cpu: "100m"
+        memory: "128Mi"
       maxAllowed:
-        cpu: "1" # CPU maximum autorisé
-        memory: "1Gi" # Mémoire maximum autorisée
+        cpu: "1"
+        memory: "1Gi"

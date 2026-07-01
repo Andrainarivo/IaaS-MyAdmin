@@ -3,19 +3,21 @@
 pipeline {
     agent any
 
+    parameters {
+        string(name: 'GCP_PROJECT', defaultValue: 'myadminproject', description: 'GCP Project ID for deployment')
+        string(name: 'GCP_REGION', defaultValue: 'us-west1', description: 'GCP Region for resources (e.g., us-west1)')
+        string(name: 'GCP_ZONE', defaultValue: 'us-west1-a', description: 'GCP Zone for VM instances (e.g., us-west1-a)')
+        string(name: 'GAR_REPO', defaultValue: 'myadmin-repo', description: 'Name of the repository in Google Artifact Registry')
+        string(name: 'IMAGE_NAME', defaultValue: 'myadmin-app', description: 'Name for the Docker image')
+        string(name: 'API_REPO_URL', defaultValue: 'https://github.com/Andrainarivo/MyAdmin.git', description: 'Git URL of the application to build')
+        string(name: 'API_BRANCH', defaultValue: 'main', description: 'Branch of the application repository to use')
+    }
+
     environment {
-        // GCP & GAR (Google Artifact Registry) Configuration
-        GCP_PROJECT     = 'myadminproject-497120'
-        GCP_REGION      = 'us-west1'
-        GCP_ZONE        = 'us-west1-a'
-        GAR_REPO        = 'myadmin-repo'
-        IMAGE_NAME      = 'myadmin-app'
-        GAR_URL         = "${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/${GAR_REPO}/${IMAGE_NAME}"
-        
+        // Derived variables from parameters
+        GAR_URL         = "${params.GCP_REGION}-docker.pkg.dev/${params.GCP_PROJECT}/${params.GAR_REPO}/${params.IMAGE_NAME}"
         // Deployment Target
         MASTER_VM_NAME  = 'myadmin-k3s-master'
-        API_REPO_URL    = 'https://github.com/Andrainarivo/MyAdmin.git'
-        API_BRANCH      = 'main'
     }
 
     stages {
@@ -27,7 +29,7 @@ pipeline {
 
                     echo "=== 2. Fetching the API source code ==="
                     dir('api-src') {
-                        git url: "${env.API_REPO_URL}", branch: "${env.API_BRANCH}"
+                        git url: "${params.API_REPO_URL}", branch: "${params.API_BRANCH}"
                         env.GIT_COMMIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     }
                     
@@ -68,8 +70,8 @@ pipeline {
             steps {
                 script {
                     echo "=== Authenticating and Pushing to GAR ==="
-                    // The --quiet flag prevents any interactive prompts from gcloud
-                    sh "gcloud auth configure-docker ${GCP_REGION}-docker.pkg.dev --quiet"
+                    // The --quiet flag prevents any interactive prompts from gcloud. The region is taken from parameters.
+                    sh "gcloud auth configure-docker ${params.GCP_REGION}-docker.pkg.dev --quiet"
                     sh "docker push ${GAR_URL}:${env.GIT_COMMIT_SHA}"
                     sh "docker push ${GAR_URL}:latest"
                 }
@@ -79,18 +81,22 @@ pipeline {
         stage('Deploy to K3s via SSH (IAP)') {
             steps {
                 script {
-                    echo "=== Preparing manifest with the correct version tag ==="
-                    sh "sed -i 's/IMAGE_TAG/${env.GIT_COMMIT_SHA}/g' k3s/myadmin.yaml"
+                    echo "=== Preparing manifests with correct variables and version tag ==="
+                    // Substitute placeholders in the main application manifest.
+                    sh "sed -i 's|GCP_REGION-docker.pkg.dev/GCP_PROJECT/GAR_REPO/IMAGE_NAME:IMAGE_TAG|${GAR_URL}:${env.GIT_COMMIT_SHA}|g' k3s/myadmin.yaml"
+
+                    // Substitute placeholder in the GAR refresher manifest
+                    sh "sed -i 's|GCP_REGION-docker.pkg.dev|${params.GCP_REGION}-docker.pkg.dev|g' k3s/gar-refresher.yaml"
 
                     echo "=== Sending all manifests to the K3s Master ==="
                     def manifestes = ['namespaces.yaml', 'secrets.yaml', 'mysql.yaml', 'myadmin.yaml', 'hpa.yaml', 'vpa.yaml', 'gar-refresher.yaml']
                     
                     for (fichier in manifestes) {
                         sh """
-                            gcloud compute ssh ${MASTER_VM_NAME} \
+                            gcloud compute ssh ${env.MASTER_VM_NAME} \
                                 --tunnel-through-iap \
-                                --zone=${GCP_ZONE} \
-                                --project=${GCP_PROJECT} \
+                                --zone=${params.GCP_ZONE} \
+                                --project=${params.GCP_PROJECT} \
                                 --quiet \
                                 --command='cat > /tmp/${fichier}' < k3s/${fichier}
                         """
@@ -99,10 +105,10 @@ pipeline {
                     echo "=== Applying configurations to the cluster in order ==="
                     // ORDER: Namespaces -> GAR Refresher -> Secrets -> DB -> Application -> Auto-scaling
                     sh """
-                        gcloud compute ssh ${MASTER_VM_NAME} \
+                        gcloud compute ssh ${env.MASTER_VM_NAME} \
                             --tunnel-through-iap \
-                            --zone=${GCP_ZONE} \
-                            --project=${GCP_PROJECT} \
+                            --zone=${params.GCP_ZONE} \
+                            --project=${params.GCP_PROJECT} \
                             --quiet \
                             --command='
                                 sudo kubectl apply -f /tmp/namespaces.yaml && \
@@ -125,15 +131,15 @@ pipeline {
     }
 
     post {
+        cleanup {
+            echo "Cleaning up local images on the DinD runner..."
+            sh "docker rmi ${GAR_URL}:${env.GIT_COMMIT_SHA} ${GAR_URL}:latest || true"
+        }
         success {
             echo "Deployment of MyAdmin version ${env.GIT_COMMIT_SHA} succeeded!"
         }
         failure {
             echo "Pipeline failed. An anomaly was detected."
-        }
-        cleanup {
-            echo "Cleaning up local images on the DinD runner..."
-            sh "docker rmi ${GAR_URL}:${env.GIT_COMMIT_SHA} ${GAR_URL}:latest || true"
         }
     }
 }

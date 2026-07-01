@@ -17,27 +17,30 @@ This guide explains how to provision the entire infrastructure on Google Cloud P
     gcloud auth application-default login
     ```
 
-## Configuration
+## Configuration & Setup
 
-1. **Navigate to the Terraform directory**:
+To configure the deployment for a new project, run the interactive initialization script from the root of the repository. This is the recommended first step.
 
-    ```bash
-    cd terraform
-    ```
+```bash
+chmod +x ./init-project.sh
+./init-project.sh
+```
 
-2. **Create a `terraform.tfvars` file**: This file will contain your variable values. **Never commit this file to Git** if it contains sensitive information.
+This script will:
 
-    ```tfvars
-    # terraform.tfvars
-    project_id = "your-gcp-project-id"
-    region     = "us-west1"
-    zone       = "us-west1-a"
-    k3s_token  = "a-very-long-and-random-secret-token"
-    ```
-
-    > **Security Note**: The `k3s_token` is sensitive. For production deployments, use a secret manager or environment variables instead of a plain text file.
+- Ask for your new Project ID, region, and zone
+- Generate a secure `k3s_token`.
+- Automatically create `terraform/terraform.tfvars` with your settings.
+- Update the Terraform backend and Jenkinsfile with your project details.
+- Create the necessary GCS bucket for storing Terraform state if it doesn't exist.
 
 ## Deployment
+
+Once the initialization is complete, navigate to the `terraform` directory:
+
+```bash
+cd terraform
+```
 
 1. **Initialize**: Initializes the Terraform working directory, downloading the necessary providers.
 

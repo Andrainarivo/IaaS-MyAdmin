@@ -10,7 +10,7 @@ if [ -z "$MASTER_IP" ] || [ -z "$K3S_TOKEN" ]; then
 fi
 
 # Install K3s agent, pointing to the master node
-curl -sfL https://get.k3s.io | sh -s - agent \
+curl -sfL https://get.k3s.io | sh -s - agent --node-label "node-role.kubernetes.io/worker=" \
   --server https://${MASTER_IP}:6443 \
   --token ${K3S_TOKEN}
 

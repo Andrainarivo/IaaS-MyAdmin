@@ -11,7 +11,7 @@ To manage the Kubernetes cluster from your local machine, you need the `kubeconf
 These variables will make the following commands easier to copy-paste.
 
 ```bash
-export GCLOUD_PROJECT=$(gcloud config get-value project)
+export GCLOUD_PROJECT=$(gcloud config get project)
 export GCLOUD_ZONE="us-west1-a" # Or the zone you deployed to
 ```
 
@@ -31,23 +31,19 @@ gcloud compute ssh myadmin-k3s-master \
 
 ### Step 3: Fetch and Modify the Kubeconfig
 
-In a **different terminal**, use `gcloud` to copy the `k3s.yaml` file from the master node.
+In a **different terminal**, use `gcloud ssh` to read the `k3s.yaml` file from the master node (which requires `sudo`) and save it locally. The `scp` command fails due to file permissions, as the file is owned by `root`.
 
 ```bash
-gcloud compute scp myadmin-k3s-master:/etc/rancher/k3s/k3s.yaml ./k3s.yaml \
+gcloud compute ssh myadmin-k3s-master \
   --project=${GCLOUD_PROJECT} \
   --zone=${GCLOUD_ZONE} \
-  --tunnel-through-iap
+  --tunnel-through-iap \
+  --command="sudo cat /etc/rancher/k3s/k3s.yaml" > k3s.yaml
 ```
 
 Now, modify the downloaded `k3s.yaml` to point to your local tunnel instead of the master's internal address.
 
 ```bash
-# For macOS/BSD:
-sed -i '' 's/server: https:\/\/127.0.0.1:6443/server: https:\/\/127.0.0.1:6443/' k3s.yaml
-sed -i '' 's/server: https:\/\/[0-9\.]*:6443/server: https:\/\/127.0.0.1:6443/' k3s.yaml
-
-# For Linux (GNU sed):
 sed -i 's/server: https:\/\/[0-9\.]*:6443/server: https:\/\/127.0.0.1:6443/' k3s.yaml
 ```
 
@@ -59,12 +55,15 @@ You can now interact with your cluster using `kubectl` by pointing it to your mo
 export KUBECONFIG=./k3s.yaml
 
 # Test the connection
-kubectl get nodes
+kubectl get nodes -o wide
+```
+
+```stdout
 # EXPECTED OUTPUT:
-# NAME                 STATUS   ROLES                  AGE   VERSION
-# myadmin-k3s-master   Ready    control-plane,master   ...   v1.2x.x+k3s1
-# myadmin-k3s-worker   Ready    <none>                 ...   v1.2x.x+k3s1
-# myadmin-k3s-worker2  Ready    <none>                 ...   v1.2x.x+k3s1
+NAME                  STATUS   ROLES           AGE   VERSION        INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION   CONTAINER-RUNTIME
+myadmin-k3s-master    Ready    control-plane   35d   v1.35.5+k3s1   10.10.10.X    <none>        Ubuntu 22.04.5 LTS   6.8.0-1058-gcp   containerd://2.2.3-k3s1
+myadmin-k3s-worker    Ready    worker          35d   v1.35.5+k3s1   10.10.10.Y    <none>        Ubuntu 22.04.5 LTS   6.8.0-1058-gcp   containerd://2.2.3-k3s1
+myadmin-k3s-worker2   Ready    worker          32d   v1.35.5+k3s1   10.10.10.Z    <none>        Ubuntu 22.04.5 LTS   6.8.0-1058-gcp   containerd://2.2.3-k3s1
 ```
 
 ## 2. Kubectl Commands
@@ -84,8 +83,17 @@ kubectl logs $POD_NAME -n myadmin-dev
 # Get detailed information about the deployment
 kubectl describe deployment myadmin-api -n myadmin-dev
 
-# Apply changes from a manifest file
-kubectl apply -f k3s/myadmin.yaml
+# Stream live runtime log outputs from the core application containers
+kubectl logs deployment/myadmin-api --container=myadmin-core -f -n myadmin-dev
+
+# Apply targeted manifest configurations manually to the development namespace
+kubectl apply -f k3s/myadmin.yaml -n myadmin-dev
+
+# Inspect the deployment change log and version history
+kubectl rollout history deployment/myadmin-api -n myadmin-dev
+
+# Revert a bad deployment instantly to the last stable configuration
+kubectl rollout undo deployment/myadmin-api -n myadmin-dev
 ```
 
 ### Autoscaling (HPA & VPA)
@@ -100,6 +108,14 @@ kubectl describe hpa myadmin-api-hpa -n myadmin-dev
 # Check the status of the Vertical Pod Autoscaler for your app
 # Note: A VPA object must be created for the deployment first. The 'addons.sh' script only installs the VPA components.
 kubectl get vpa -n myadmin-dev
+```
+
+### Manual Token Refreshes
+
+If a cluster scaling event occurs while a token is stale or invalid, administrators can bypass the 30-minute schedule and force an immediate token refresh by creating a one-off job from the template:
+
+```bash
+kubectl create job --from=cronjob/gar-token-refresher manual-token-refresh -n myadmin-dev
 ```
 
 ## 3. GCloud Commands

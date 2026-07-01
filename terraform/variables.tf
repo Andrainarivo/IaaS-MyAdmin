@@ -1,16 +1,16 @@
 variable "project_id" {
-  description = "The unique ID of the GCP project created in the console"
+  description = "The GCP project ID to deploy resources into."
   type        = string
 }
 
 variable "region" {
-  description = "Default GCP region"
+  description = "The GCP region for resources."
   type        = string
   default     = "us-west1"
 }
 
 variable "zone" {
-  description = "Default GCP zone"
+  description = "The GCP zone for VM instances."
   type        = string
   default     = "us-west1-a"
 }

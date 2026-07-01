@@ -41,7 +41,7 @@ resource "google_compute_instance" "k3s_master" {
 resource "google_compute_instance" "k3s_worker" {
   count        = var.worker_count
   machine_type = var.machine_type
-  name         = "myadmin-k3s-worker-${count.index}"
+  name         = "myadmin-k3s-worker-${count.index + 1}"
   zone         = var.zone
 
   boot_disk {

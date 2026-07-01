@@ -29,8 +29,7 @@ spec:
         - name: gar-credentials
       containers:
         - name: myadmin-core
-          # yamllint disable-line rule:line-length
-          image: us-west1-docker.pkg.dev/myadminproject-497120/myadmin-repo/myadmin-app:IMAGE_TAG
+          image: GCP_REGION-docker.pkg.dev/GCP_PROJECT/GAR_REPO/IMAGE_NAME:IMAGE_TAG # image: us-west1-docker.pkg.dev/myadminproject-501004/myadmin-repo/myadmin-app:IMAGE_TAG
           ports:
             - containerPort: 8000
               name: http-api
