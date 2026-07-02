@@ -39,8 +39,8 @@ spec:
         app.kubernetes.io/part-of: myadmin
     spec:
       nodeSelector:
-        # This ensures that the MySQL pod is scheduled on a specific node (myadmin-k3s-worker), which can be useful for performance or compliance reasons.
-        kubernetes.io/hostname: "myadmin-k3s-worker"
+        # This ensures that the MySQL pod is scheduled on a specific node (myadmin-k3s-worker-1), which can be useful for performance or compliance reasons.
+        kubernetes.io/hostname: "myadmin-k3s-worker-1"
       containers:
       - name: mysql
         image: mysql:8.0.46 # Using a specific MySQL version ensures compatibility and stability for the application.
