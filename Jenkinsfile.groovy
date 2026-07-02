@@ -38,6 +38,7 @@ pipeline {
             }
         }
 
+        // à modifier pour valider les tous les manifests k3s avant de les envoyer au cluster
         stage('Validate K8s Manifests') {
             steps {
                 script {
@@ -60,7 +61,7 @@ pipeline {
                             --build-arg GIT_COMMIT_SHA=${env.GIT_COMMIT_SHA} \
                             -t ${GAR_URL}:${env.GIT_COMMIT_SHA} \
                             -t ${GAR_URL}:latest \
-                            -f api-src/docker/api/Dockerfile api-src/
+                            -f docker/api/Dockerfile api-src/
                     """
                 }
             }
