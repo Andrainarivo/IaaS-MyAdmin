@@ -1,4 +1,4 @@
-# Infrastructure as Service of MyAdmin Application
+# Infrastructure as a Service of MyAdmin Application
 
 This project contains all the Infrastructure as Code (IaC) and configurations required to deploy, manage, and scale the [`MyAdmin`](https://github.com/Andrainarivo/MyAdmin) application on Google Cloud Platform (GCP).
 
